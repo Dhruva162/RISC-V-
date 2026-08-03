@@ -16,6 +16,10 @@ module cpu_top
     wire [31:0] pc_plus4;
     wire [31:0] pc_target;
     wire [31:0] jalr_target;
+    wire [31:0] if_instruction;
+    wire [31:0] id_instruction;
+    wire [31:0] id_pc;
+    wire [31:0] id_pc_plus4;
     wire [31:0] rs1_data;
     wire [31:0] rs2_data;
     wire [31:0] immediate;
@@ -45,12 +49,33 @@ module cpu_top
     wire       take_target;
     wire       alu_zero;
 
-    assign opcode = instruction[6:0];
-    assign rd = instruction[11:7];
-    assign funct3 = instruction[14:12];
-    assign rs1 = instruction[19:15];
-    assign rs2 = instruction[24:20];
-    assign funct7_bit5 = instruction[30];
+    wire       ex_reg_write;
+    wire       ex_mem_write;
+    wire       ex_mem_read;
+    wire       ex_branch;
+    wire       ex_jump;
+    wire       ex_jalr;
+    wire       ex_alu_src;
+    wire [1:0] ex_result_src;
+    wire [3:0] ex_alu_control;
+    wire [31:0] ex_pc;
+    wire [31:0] ex_pc_plus4;
+    wire [31:0] ex_rs1_data;
+    wire [31:0] ex_rs2_data;
+    wire [31:0] ex_immediate;
+    wire [4:0] ex_rs1;
+    wire [4:0] ex_rs2;
+    wire [4:0] ex_rd;
+    wire [2:0] ex_funct3;
+    wire [6:0] ex_opcode;
+
+    assign instruction = id_instruction;
+    assign opcode = id_instruction[6:0];
+    assign rd = id_instruction[11:7];
+    assign funct3 = id_instruction[14:12];
+    assign rs1 = id_instruction[19:15];
+    assign rs2 = id_instruction[24:20];
+    assign funct7_bit5 = id_instruction[30];
 
     program_counter pc_inst (
         .clk(clk),
@@ -64,7 +89,18 @@ module cpu_top
         .INIT_FILE(IMEM_INIT_FILE)
     ) instruction_memory_inst (
         .address(pc),
-        .instruction(instruction)
+        .instruction(if_instruction)
+    );
+
+    if_id_register if_id_register_inst (
+        .clk(clk),
+        .rst(rst),
+        .instruction_in(if_instruction),
+        .pc_in(pc),
+        .pc_plus4_in(pc_plus4),
+        .instruction_out(id_instruction),
+        .pc_out(id_pc),
+        .pc_plus4_out(id_pc_plus4)
     );
 
     control_unit control_unit_inst (
@@ -85,10 +121,10 @@ module cpu_top
     register_file register_file_inst (
         .clk(clk),
         .rst(rst),
-        .write_enable(reg_write),
+        .write_enable(ex_reg_write),
         .read_addr1(rs1),
         .read_addr2(rs2),
-        .write_addr(rd),
+        .write_addr(ex_rd),
         .write_data(writeback_data),
         .read_data1(rs1_data),
         .read_data2(rs2_data)
@@ -99,19 +135,62 @@ module cpu_top
         .immediate(immediate)
     );
 
+    id_ex_register id_ex_register_inst (
+        .clk(clk),
+        .rst(rst),
+        .reg_write_in(reg_write),
+        .mem_write_in(mem_write),
+        .mem_read_in(mem_read),
+        .branch_in(branch),
+        .jump_in(jump),
+        .jalr_in(jalr),
+        .alu_src_in(alu_src),
+        .result_src_in(result_src),
+        .alu_control_in(alu_control),
+        .pc_in(id_pc),
+        .pc_plus4_in(id_pc_plus4),
+        .rs1_data_in(rs1_data),
+        .rs2_data_in(rs2_data),
+        .immediate_in(immediate),
+        .rs1_in(rs1),
+        .rs2_in(rs2),
+        .rd_in(rd),
+        .funct3_in(funct3),
+        .opcode_in(opcode),
+        .reg_write_out(ex_reg_write),
+        .mem_write_out(ex_mem_write),
+        .mem_read_out(ex_mem_read),
+        .branch_out(ex_branch),
+        .jump_out(ex_jump),
+        .jalr_out(ex_jalr),
+        .alu_src_out(ex_alu_src),
+        .result_src_out(ex_result_src),
+        .alu_control_out(ex_alu_control),
+        .pc_out(ex_pc),
+        .pc_plus4_out(ex_pc_plus4),
+        .rs1_data_out(ex_rs1_data),
+        .rs2_data_out(ex_rs2_data),
+        .immediate_out(ex_immediate),
+        .rs1_out(ex_rs1),
+        .rs2_out(ex_rs2),
+        .rd_out(ex_rd),
+        .funct3_out(ex_funct3),
+        .opcode_out(ex_opcode)
+    );
+
     mux2 #(.WIDTH(32)) alu_src_mux (
-        .d0(rs2_data),
-        .d1(immediate),
-        .sel(alu_src),
+        .d0(ex_rs2_data),
+        .d1(ex_immediate),
+        .sel(ex_alu_src),
         .y(alu_operand_b)
     );
 
-    assign alu_operand_a = (opcode == 7'b0010111) ? pc : rs1_data;
+    assign alu_operand_a = (ex_opcode == 7'b0010111) ? ex_pc : ex_rs1_data;
 
     alu alu_inst (
         .a(alu_operand_a),
         .b(alu_operand_b),
-        .alu_control(alu_control),
+        .alu_control(ex_alu_control),
         .result(alu_result),
         .zero(alu_zero)
     );
@@ -121,19 +200,19 @@ module cpu_top
     ) data_memory_inst (
         .clk(clk),
         .rst(rst),
-        .mem_write(mem_write),
-        .mem_read(mem_read),
-        .funct3(funct3),
+        .mem_write(ex_mem_write),
+        .mem_read(ex_mem_read),
+        .funct3(ex_funct3),
         .address(alu_result),
-        .write_data(rs2_data),
+        .write_data(ex_rs2_data),
         .read_data(read_data)
     );
 
     branch_unit branch_unit_inst (
-        .rs1_data(rs1_data),
-        .rs2_data(rs2_data),
-        .funct3(funct3),
-        .branch(branch),
+        .rs1_data(ex_rs1_data),
+        .rs2_data(ex_rs2_data),
+        .funct3(ex_funct3),
+        .branch(ex_branch),
         .branch_taken(branch_taken)
     );
 
@@ -144,25 +223,25 @@ module cpu_top
     );
 
     adder #(.WIDTH(32)) pc_target_adder (
-        .a(pc),
-        .b(immediate),
+        .a(ex_pc),
+        .b(ex_immediate),
         .y(pc_target)
     );
 
-    assign jalr_target = (rs1_data + immediate) & 32'hffff_fffe;
-    assign pc_link = pc_plus4;
-    assign take_target = branch_taken | jump;
+    assign jalr_target = (ex_rs1_data + ex_immediate) & 32'hffff_fffe;
+    assign pc_link = ex_pc_plus4;
+    assign take_target = branch_taken | ex_jump;
 
     mux4 #(.WIDTH(32)) result_mux (
         .d0(alu_result),
         .d1(read_data),
         .d2(pc_link),
-        .d3(immediate),
-        .sel(result_src),
+        .d3(ex_immediate),
+        .sel(ex_result_src),
         .y(writeback_data)
     );
 
-    assign pc_next = jalr ? jalr_target :
+    assign pc_next = ex_jalr ? jalr_target :
                      take_target ? pc_target :
                      pc_plus4;
 
