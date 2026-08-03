@@ -3,6 +3,8 @@ $ErrorActionPreference = "Stop"
 $rtl = @(
     "../rtl/program_counter.v",
     "../rtl/instruction_memory.v",
+    "../rtl/if_id_register.v",
+    "../rtl/id_ex_register.v",
     "../rtl/data_memory.v",
     "../rtl/register_file.v",
     "../rtl/alu.v",

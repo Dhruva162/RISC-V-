@@ -1,5 +1,7 @@
 read_verilog ../rtl/program_counter.v
 read_verilog ../rtl/instruction_memory.v
+read_verilog ../rtl/if_id_register.v
+read_verilog ../rtl/id_ex_register.v
 read_verilog ../rtl/data_memory.v
 read_verilog ../rtl/register_file.v
 read_verilog ../rtl/alu.v
