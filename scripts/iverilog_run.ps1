@@ -5,6 +5,8 @@ $rtl = @(
     "../rtl/instruction_memory.v",
     "../rtl/if_id_register.v",
     "../rtl/id_ex_register.v",
+    "../rtl/ex_mem_register.v",
+    "../rtl/mem_wb_register.v",
     "../rtl/data_memory.v",
     "../rtl/register_file.v",
     "../rtl/alu.v",

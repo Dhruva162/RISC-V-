@@ -25,6 +25,7 @@ module cpu_top
     wire [31:0] immediate;
     wire [31:0] alu_operand_a;
     wire [31:0] alu_operand_b;
+    wire [31:0] ex_alu_result;
     wire [31:0] read_data;
     wire [31:0] writeback_data;
     wire [31:0] pc_link;
@@ -69,7 +70,27 @@ module cpu_top
     wire [2:0] ex_funct3;
     wire [6:0] ex_opcode;
 
+    wire       mem_reg_write;
+    wire       mem_mem_write;
+    wire       mem_mem_read;
+    wire [1:0] mem_result_src;
+    wire [31:0] mem_alu_result;
+    wire [31:0] mem_rs2_data;
+    wire [31:0] mem_pc_plus4;
+    wire [31:0] mem_immediate;
+    wire [4:0] mem_rd;
+    wire [2:0] mem_funct3;
+
+    wire       wb_reg_write;
+    wire [1:0] wb_result_src;
+    wire [31:0] wb_alu_result;
+    wire [31:0] wb_read_data;
+    wire [31:0] wb_pc_plus4;
+    wire [31:0] wb_immediate;
+    wire [4:0] wb_rd;
+
     assign instruction = id_instruction;
+    assign alu_result = ex_alu_result;
     assign opcode = id_instruction[6:0];
     assign rd = id_instruction[11:7];
     assign funct3 = id_instruction[14:12];
@@ -121,10 +142,10 @@ module cpu_top
     register_file register_file_inst (
         .clk(clk),
         .rst(rst),
-        .write_enable(ex_reg_write),
+        .write_enable(wb_reg_write),
         .read_addr1(rs1),
         .read_addr2(rs2),
-        .write_addr(ex_rd),
+        .write_addr(wb_rd),
         .write_data(writeback_data),
         .read_data1(rs1_data),
         .read_data2(rs2_data)
@@ -191,8 +212,33 @@ module cpu_top
         .a(alu_operand_a),
         .b(alu_operand_b),
         .alu_control(ex_alu_control),
-        .result(alu_result),
+        .result(ex_alu_result),
         .zero(alu_zero)
+    );
+
+    ex_mem_register ex_mem_register_inst (
+        .clk(clk),
+        .rst(rst),
+        .reg_write_in(ex_reg_write),
+        .mem_write_in(ex_mem_write),
+        .mem_read_in(ex_mem_read),
+        .result_src_in(ex_result_src),
+        .alu_result_in(ex_alu_result),
+        .rs2_data_in(ex_rs2_data),
+        .pc_plus4_in(ex_pc_plus4),
+        .immediate_in(ex_immediate),
+        .rd_in(ex_rd),
+        .funct3_in(ex_funct3),
+        .reg_write_out(mem_reg_write),
+        .mem_write_out(mem_mem_write),
+        .mem_read_out(mem_mem_read),
+        .result_src_out(mem_result_src),
+        .alu_result_out(mem_alu_result),
+        .rs2_data_out(mem_rs2_data),
+        .pc_plus4_out(mem_pc_plus4),
+        .immediate_out(mem_immediate),
+        .rd_out(mem_rd),
+        .funct3_out(mem_funct3)
     );
 
     data_memory #(
@@ -200,12 +246,31 @@ module cpu_top
     ) data_memory_inst (
         .clk(clk),
         .rst(rst),
-        .mem_write(ex_mem_write),
-        .mem_read(ex_mem_read),
-        .funct3(ex_funct3),
-        .address(alu_result),
-        .write_data(ex_rs2_data),
+        .mem_write(mem_mem_write),
+        .mem_read(mem_mem_read),
+        .funct3(mem_funct3),
+        .address(mem_alu_result),
+        .write_data(mem_rs2_data),
         .read_data(read_data)
+    );
+
+    mem_wb_register mem_wb_register_inst (
+        .clk(clk),
+        .rst(rst),
+        .reg_write_in(mem_reg_write),
+        .result_src_in(mem_result_src),
+        .alu_result_in(mem_alu_result),
+        .read_data_in(read_data),
+        .pc_plus4_in(mem_pc_plus4),
+        .immediate_in(mem_immediate),
+        .rd_in(mem_rd),
+        .reg_write_out(wb_reg_write),
+        .result_src_out(wb_result_src),
+        .alu_result_out(wb_alu_result),
+        .read_data_out(wb_read_data),
+        .pc_plus4_out(wb_pc_plus4),
+        .immediate_out(wb_immediate),
+        .rd_out(wb_rd)
     );
 
     branch_unit branch_unit_inst (
@@ -229,15 +294,15 @@ module cpu_top
     );
 
     assign jalr_target = (ex_rs1_data + ex_immediate) & 32'hffff_fffe;
-    assign pc_link = ex_pc_plus4;
+    assign pc_link = wb_pc_plus4;
     assign take_target = branch_taken | ex_jump;
 
     mux4 #(.WIDTH(32)) result_mux (
-        .d0(alu_result),
-        .d1(read_data),
+        .d0(wb_alu_result),
+        .d1(wb_read_data),
         .d2(pc_link),
-        .d3(ex_immediate),
-        .sel(ex_result_src),
+        .d3(wb_immediate),
+        .sel(wb_result_src),
         .y(writeback_data)
     );
 
