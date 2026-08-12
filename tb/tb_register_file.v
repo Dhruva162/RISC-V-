@@ -28,13 +28,23 @@ module tb_register_file;
 
     always #5 clk = ~clk;
 
-    task expect;
-        input [31:0] actual;
+    task expect_read_data1;
         input [31:0] expected;
         begin
             #1;
-            if (actual !== expected) begin
-                $display("FAIL actual=%h expected=%h", actual, expected);
+            if (read_data1 !== expected) begin
+                $display("FAIL actual=%h expected=%h", read_data1, expected);
+                errors = errors + 1;
+            end
+        end
+    endtask
+
+    task expect_read_data2;
+        input [31:0] expected;
+        begin
+            #1;
+            if (read_data2 !== expected) begin
+                $display("FAIL actual=%h expected=%h", read_data2, expected);
                 errors = errors + 1;
             end
         end
@@ -59,14 +69,14 @@ module tb_register_file;
         @(posedge clk);
         #1;
         read_addr1 = 5'd5;
-        expect(read_data1, 32'h1234_5678);
+        expect_read_data1(32'h1234_5678);
 
         write_addr = 5'd0;
         write_data = 32'hffff_ffff;
         @(posedge clk);
         #1;
         read_addr1 = 5'd0;
-        expect(read_data1, 32'h0000_0000);
+        expect_read_data1(32'h0000_0000);
 
         write_enable = 0;
         write_addr = 5'd6;
@@ -74,7 +84,7 @@ module tb_register_file;
         @(posedge clk);
         #1;
         read_addr2 = 5'd6;
-        expect(read_data2, 32'h0000_0000);
+        expect_read_data2(32'h0000_0000);
 
         if (errors == 0)
             $display("tb_register_file PASS");

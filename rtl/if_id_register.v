@@ -3,6 +3,7 @@ module if_id_register
     input wire clk,
     input wire rst,
     input wire enable,
+    input wire flush,
 
     input wire [31:0] instruction_in,
     input wire [31:0] pc_in,
@@ -14,6 +15,10 @@ module if_id_register
 );
     always @(posedge clk or posedge rst) begin
         if (rst) begin
+            instruction_out <= 32'b0;
+            pc_out <= 32'b0;
+            pc_plus4_out <= 32'b0;
+        end else if (flush) begin
             instruction_out <= 32'b0;
             pc_out <= 32'b0;
             pc_plus4_out <= 32'b0;

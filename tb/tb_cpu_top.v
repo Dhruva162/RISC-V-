@@ -117,7 +117,7 @@ module tb_cpu_top;
 
         repeat (2) @(posedge clk);
         rst = 0;
-        repeat (12) @(posedge clk);
+        repeat (20) @(posedge clk);
         #1;
 
         check_reg(5'd1, 32'd5);

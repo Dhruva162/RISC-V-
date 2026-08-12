@@ -1,5 +1,8 @@
 $ErrorActionPreference = "Stop"
 
+$script_dir = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location $script_dir
+
 $rtl = @(
     "../rtl/program_counter.v",
     "../rtl/instruction_memory.v",

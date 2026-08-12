@@ -96,6 +96,8 @@ module cpu_top
     wire [1:0] forward_b;
     wire       pc_write;
     wire       if_id_write;
+    wire       load_use_flush;
+    wire       if_id_flush;
     wire       id_ex_flush;
 
     assign instruction = id_instruction;
@@ -110,7 +112,7 @@ module cpu_top
     program_counter pc_inst (
         .clk(clk),
         .rst(rst),
-        .enable(pc_write),
+        .enable(pc_write | take_target),
         .pc_next(pc_next),
         .pc(pc)
     );
@@ -127,6 +129,7 @@ module cpu_top
         .clk(clk),
         .rst(rst),
         .enable(if_id_write),
+        .flush(if_id_flush),
         .instruction_in(if_instruction),
         .pc_in(pc),
         .pc_plus4_in(pc_plus4),
@@ -218,7 +221,7 @@ module cpu_top
         .id_rs2(rs2),
         .pc_write(pc_write),
         .if_id_write(if_id_write),
-        .id_ex_flush(id_ex_flush)
+        .id_ex_flush(load_use_flush)
     );
 
     forwarding_unit forwarding_unit_inst (
@@ -350,6 +353,8 @@ module cpu_top
     assign jalr_target = (forward_data_a + ex_immediate) & 32'hffff_fffe;
     assign pc_link = wb_pc_plus4;
     assign take_target = branch_taken | ex_jump;
+    assign if_id_flush = take_target;
+    assign id_ex_flush = load_use_flush | take_target;
 
     mux4 #(.WIDTH(32)) result_mux (
         .d0(wb_alu_result),
