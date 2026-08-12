@@ -13,6 +13,7 @@ $rtl = @(
     "../rtl/alu_decoder.v",
     "../rtl/main_decoder.v",
     "../rtl/control_unit.v",
+    "../rtl/forwarding_unit.v",
     "../rtl/immediate_generator.v",
     "../rtl/branch_unit.v",
     "../rtl/adder.v",

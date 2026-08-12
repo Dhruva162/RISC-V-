@@ -25,9 +25,12 @@ module cpu_top
     wire [31:0] immediate;
     wire [31:0] alu_operand_a;
     wire [31:0] alu_operand_b;
+    wire [31:0] forward_data_a;
+    wire [31:0] forward_data_b;
     wire [31:0] ex_alu_result;
     wire [31:0] read_data;
     wire [31:0] writeback_data;
+    wire [31:0] mem_forward_data;
     wire [31:0] pc_link;
 
     wire [4:0] rs1;
@@ -88,6 +91,9 @@ module cpu_top
     wire [31:0] wb_pc_plus4;
     wire [31:0] wb_immediate;
     wire [4:0] wb_rd;
+
+    wire [1:0] forward_a;
+    wire [1:0] forward_b;
 
     assign instruction = id_instruction;
     assign alu_result = ex_alu_result;
@@ -199,14 +205,43 @@ module cpu_top
         .opcode_out(ex_opcode)
     );
 
-    mux2 #(.WIDTH(32)) alu_src_mux (
+    forwarding_unit forwarding_unit_inst (
+        .ex_rs1(ex_rs1),
+        .ex_rs2(ex_rs2),
+        .mem_rd(mem_rd),
+        .wb_rd(wb_rd),
+        .mem_reg_write(mem_reg_write),
+        .wb_reg_write(wb_reg_write),
+        .forward_a(forward_a),
+        .forward_b(forward_b)
+    );
+
+    mux4 #(.WIDTH(32)) forward_a_mux (
+        .d0(ex_rs1_data),
+        .d1(writeback_data),
+        .d2(mem_forward_data),
+        .d3(ex_rs1_data),
+        .sel(forward_a),
+        .y(forward_data_a)
+    );
+
+    mux4 #(.WIDTH(32)) forward_b_mux (
         .d0(ex_rs2_data),
+        .d1(writeback_data),
+        .d2(mem_forward_data),
+        .d3(ex_rs2_data),
+        .sel(forward_b),
+        .y(forward_data_b)
+    );
+
+    mux2 #(.WIDTH(32)) alu_src_mux (
+        .d0(forward_data_b),
         .d1(ex_immediate),
         .sel(ex_alu_src),
         .y(alu_operand_b)
     );
 
-    assign alu_operand_a = (ex_opcode == 7'b0010111) ? ex_pc : ex_rs1_data;
+    assign alu_operand_a = (ex_opcode == 7'b0010111) ? ex_pc : forward_data_a;
 
     alu alu_inst (
         .a(alu_operand_a),
@@ -224,7 +259,7 @@ module cpu_top
         .mem_read_in(ex_mem_read),
         .result_src_in(ex_result_src),
         .alu_result_in(ex_alu_result),
-        .rs2_data_in(ex_rs2_data),
+        .rs2_data_in(forward_data_b),
         .pc_plus4_in(ex_pc_plus4),
         .immediate_in(ex_immediate),
         .rd_in(ex_rd),
@@ -274,8 +309,8 @@ module cpu_top
     );
 
     branch_unit branch_unit_inst (
-        .rs1_data(ex_rs1_data),
-        .rs2_data(ex_rs2_data),
+        .rs1_data(forward_data_a),
+        .rs2_data(forward_data_b),
         .funct3(ex_funct3),
         .branch(ex_branch),
         .branch_taken(branch_taken)
@@ -293,7 +328,10 @@ module cpu_top
         .y(pc_target)
     );
 
-    assign jalr_target = (ex_rs1_data + ex_immediate) & 32'hffff_fffe;
+    assign mem_forward_data = (mem_result_src == 2'b10) ? mem_pc_plus4 :
+                              (mem_result_src == 2'b11) ? mem_immediate :
+                              mem_alu_result;
+    assign jalr_target = (forward_data_a + ex_immediate) & 32'hffff_fffe;
     assign pc_link = wb_pc_plus4;
     assign take_target = branch_taken | ex_jump;
 
