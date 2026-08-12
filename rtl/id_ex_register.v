@@ -2,6 +2,7 @@ module id_ex_register
 (
     input wire clk,
     input wire rst,
+    input wire flush,
 
     input wire        reg_write_in,
     input wire        mem_write_in,
@@ -48,6 +49,27 @@ module id_ex_register
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
+            reg_write_out  <= 1'b0;
+            mem_write_out  <= 1'b0;
+            mem_read_out   <= 1'b0;
+            branch_out     <= 1'b0;
+            jump_out       <= 1'b0;
+            jalr_out       <= 1'b0;
+            alu_src_out    <= 1'b0;
+            result_src_out <= 2'b00;
+            alu_control_out <= 4'b0000;
+
+            pc_out         <= 32'b0;
+            pc_plus4_out   <= 32'b0;
+            rs1_data_out   <= 32'b0;
+            rs2_data_out   <= 32'b0;
+            immediate_out  <= 32'b0;
+            rs1_out        <= 5'b0;
+            rs2_out        <= 5'b0;
+            rd_out         <= 5'b0;
+            funct3_out     <= 3'b0;
+            opcode_out     <= 7'b0;
+        end else if (flush) begin
             reg_write_out  <= 1'b0;
             mem_write_out  <= 1'b0;
             mem_read_out   <= 1'b0;

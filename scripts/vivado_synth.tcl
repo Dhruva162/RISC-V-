@@ -11,6 +11,7 @@ read_verilog ../rtl/alu_decoder.v
 read_verilog ../rtl/main_decoder.v
 read_verilog ../rtl/control_unit.v
 read_verilog ../rtl/forwarding_unit.v
+read_verilog ../rtl/hazard_unit.v
 read_verilog ../rtl/immediate_generator.v
 read_verilog ../rtl/branch_unit.v
 read_verilog ../rtl/adder.v

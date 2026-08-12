@@ -5,6 +5,7 @@ module program_counter
 (
     input  wire                 clk,
     input  wire                 rst,
+    input  wire                 enable,
     input  wire [WIDTH-1:0]     pc_next,
     output reg  [WIDTH-1:0]     pc
 );
@@ -12,7 +13,7 @@ module program_counter
     always @(posedge clk) begin
         if (rst)
             pc <= {WIDTH{1'b0}};
-        else
+        else if (enable)
             pc <= pc_next;
     end
 

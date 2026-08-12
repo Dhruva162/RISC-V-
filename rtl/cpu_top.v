@@ -94,6 +94,9 @@ module cpu_top
 
     wire [1:0] forward_a;
     wire [1:0] forward_b;
+    wire       pc_write;
+    wire       if_id_write;
+    wire       id_ex_flush;
 
     assign instruction = id_instruction;
     assign alu_result = ex_alu_result;
@@ -107,6 +110,7 @@ module cpu_top
     program_counter pc_inst (
         .clk(clk),
         .rst(rst),
+        .enable(pc_write),
         .pc_next(pc_next),
         .pc(pc)
     );
@@ -122,6 +126,7 @@ module cpu_top
     if_id_register if_id_register_inst (
         .clk(clk),
         .rst(rst),
+        .enable(if_id_write),
         .instruction_in(if_instruction),
         .pc_in(pc),
         .pc_plus4_in(pc_plus4),
@@ -165,6 +170,7 @@ module cpu_top
     id_ex_register id_ex_register_inst (
         .clk(clk),
         .rst(rst),
+        .flush(id_ex_flush),
         .reg_write_in(reg_write),
         .mem_write_in(mem_write),
         .mem_read_in(mem_read),
@@ -203,6 +209,16 @@ module cpu_top
         .rd_out(ex_rd),
         .funct3_out(ex_funct3),
         .opcode_out(ex_opcode)
+    );
+
+    hazard_unit hazard_unit_inst (
+        .ex_mem_read(ex_mem_read),
+        .ex_rd(ex_rd),
+        .id_rs1(rs1),
+        .id_rs2(rs2),
+        .pc_write(pc_write),
+        .if_id_write(if_id_write),
+        .id_ex_flush(id_ex_flush)
     );
 
     forwarding_unit forwarding_unit_inst (

@@ -2,6 +2,7 @@ module if_id_register
 (
     input wire clk,
     input wire rst,
+    input wire enable,
 
     input wire [31:0] instruction_in,
     input wire [31:0] pc_in,
@@ -16,7 +17,7 @@ module if_id_register
             instruction_out <= 32'b0;
             pc_out <= 32'b0;
             pc_plus4_out <= 32'b0;
-        end else begin
+        end else if (enable) begin
             instruction_out <= instruction_in;
             pc_out <= pc_in;
             pc_plus4_out <= pc_plus4_in;
